@@ -1,8 +1,8 @@
-import { createServerClient } from './supabase'
+import { createServiceClient } from './supabase'
 import type { QuestionClient, EndGameResult } from '@/types/quiz'
 
 export async function getSessionQuestions(sessionId: string): Promise<QuestionClient[]> {
-  const supabase = await createServerClient()
+  const supabase = createServiceClient()
 
   const { data: answers, error: answersError } = await supabase
     .from('session_answers')
@@ -37,7 +37,7 @@ export async function getSessionQuestions(sessionId: string): Promise<QuestionCl
 }
 
 export async function getSessionResults(sessionId: string): Promise<EndGameResult | null> {
-  const supabase = await createServerClient()
+  const supabase = createServiceClient()
 
   const { data: session } = await supabase
     .from('sessions')
