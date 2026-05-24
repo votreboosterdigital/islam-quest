@@ -59,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_session_answers_session ON session_answers(sessio
 -- ============================================================
 -- SEED: 40 Questions (facile x15, moyen x15, difficile x10)
 -- ============================================================
-DO $$
+CREATE OR REPLACE FUNCTION _islam_seed() RETURNS void LANGUAGE plpgsql AS $$
 DECLARE q UUID;
 BEGIN
 
@@ -3385,4 +3385,7 @@ INSERT INTO dalils (question_id, explication, texte_arabe, traduction, reference
    'Le Prophète est plus proche des croyants qu''ils ne le sont d''eux-mêmes.',
    'Sourate Al-Ahzab (33:6)');
 
-END $$;
+END;
+$$;
+SELECT _islam_seed();
+DROP FUNCTION _islam_seed();
