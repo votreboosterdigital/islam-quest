@@ -1,5 +1,12 @@
 export type Niveau = 'facile' | 'moyen' | 'difficile'
 export type Categorie = 'piliers' | 'coran' | 'hadith' | 'histoire' | 'jurisprudence' | 'prophetes' | 'foi' | 'tous'
+export type Phase = 'question' | 'dalil' | 'expired'
+export type SourceType = 'quran' | 'hadith' | 'sunnah' | 'scholar' | 'other'
+
+export interface TimerConfig {
+  enabled: boolean
+  seconds: number
+}
 
 export interface OptionClient {
   id: string
@@ -13,6 +20,7 @@ export interface Dalil {
   texte_arabe: string
   traduction: string
   reference: string
+  source_type?: SourceType
 }
 
 export interface QuestionClient {
@@ -25,6 +33,7 @@ export interface QuestionClient {
 
 export interface QuestionWithDalil extends QuestionClient {
   dalil: Dalil
+  correctOrdre: number
 }
 
 export interface StartGameResult {
@@ -34,12 +43,19 @@ export interface StartGameResult {
 
 export interface SubmitAnswerResult {
   correct: boolean
+  skipped: boolean
   question: QuestionWithDalil
 }
 
 export interface EndGameResult {
   score: number
   correctes: number
+  incorrectes: number
+  sautees: number
   total: number
   rang?: number
+}
+
+export interface QuizConfig {
+  timer: TimerConfig
 }

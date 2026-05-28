@@ -21,19 +21,19 @@ export async function getSessionQuestions(sessionId: string): Promise<QuestionCl
 
   if (qError || !questions) return []
 
-  const ordered = answers.map((a) => {
+  return answers.map((a) => {
     const q = questions.find((qq) => qq.id === a.question_id)!
     return {
       id: q.id,
       texte: q.texte,
       niveau: q.niveau as QuestionClient['niveau'],
       categorie: q.categorie as QuestionClient['categorie'],
-      options: (q.options as { id: string; texte: string; ordre: number }[])
-        .sort((a, b) => a.ordre - b.ordre),
+      // Ordre original — le shuffle visuel se fait côté client dans useQuizGame
+      options: (q.options as { id: string; texte: string; ordre: number }[]).sort(
+        (a, b) => a.ordre - b.ordre,
+      ),
     } satisfies QuestionClient
   })
-
-  return ordered
 }
 
 export async function getSessionResults(sessionId: string): Promise<EndGameResult | null> {
@@ -49,26 +49,28 @@ export async function getSessionResults(sessionId: string): Promise<EndGameResul
 
   const { data: answers } = await supabase
     .from('session_answers')
-    .select('est_correct')
+    .select('est_correct, reponse_index')
     .eq('session_id', sessionId)
 
   const total = answers?.length ?? 0
   const correctes = answers?.filter((a) => a.est_correct).length ?? 0
+  const sautees = answers?.filter((a) => a.reponse_index === null).length ?? 0
+  const incorrectes = total - correctes - sautees
+  const score = session.score ?? 0
 
-  const { count } = await supabase
-    .from('sessions')
-    .select('*', { count: 'exact', head: true })
-    .not('ended_at', 'is', null)
-    .lte('score', session.score)
+  const [{ count: below }, { count: totalSessions }] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('*', { count: 'exact', head: true })
+      .not('ended_at', 'is', null)
+      .lte('score', score),
+    supabase
+      .from('sessions')
+      .select('*', { count: 'exact', head: true })
+      .not('ended_at', 'is', null),
+  ])
 
-  const { count: totalSessions } = await supabase
-    .from('sessions')
-    .select('*', { count: 'exact', head: true })
-    .not('ended_at', 'is', null)
+  const rang = totalSessions ? Math.round(((below ?? 0) / totalSessions) * 100) : undefined
 
-  const rang = totalSessions
-    ? Math.round(((count ?? 0) / totalSessions) * 100)
-    : undefined
-
-  return { score: session.score, correctes, total, rang }
+  return { score, correctes, incorrectes, sautees, total, rang }
 }

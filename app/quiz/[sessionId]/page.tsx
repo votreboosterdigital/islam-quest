@@ -1,13 +1,18 @@
 import { notFound } from 'next/navigation'
 import QuizGame from '@/components/QuizGame'
 import { getSessionQuestions } from '@/lib/quiz/queries'
+import type { TimerConfig } from '@/types/quiz'
+
+const VALID_TIMER_VALUES = [0, 10, 20, 30, 45] as const
 
 export default async function QuizPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sessionId: string }>
+  searchParams: Promise<{ timer?: string }>
 }) {
-  const { sessionId } = await params
+  const [{ sessionId }, sp] = await Promise.all([params, searchParams])
 
   let questions
   try {
@@ -31,5 +36,12 @@ export default async function QuizPage({
 
   if (!questions.length) notFound()
 
-  return <QuizGame sessionId={sessionId} questions={questions} />
+  const raw = parseInt(sp.timer ?? '30', 10)
+  const timerSeconds = (VALID_TIMER_VALUES as readonly number[]).includes(raw) ? raw : 30
+  const timerConfig: TimerConfig = {
+    enabled: timerSeconds > 0,
+    seconds: timerSeconds,
+  }
+
+  return <QuizGame sessionId={sessionId} questions={questions} timerConfig={timerConfig} />
 }

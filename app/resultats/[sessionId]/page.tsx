@@ -19,7 +19,9 @@ export default async function ResultatsPage({
         <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-red-200 shadow text-center">
           <h2 className="text-xl font-bold text-red-700 mb-2">Erreur</h2>
           <p className="text-sm text-[#8B7355] mb-4">Impossible de charger les résultats.</p>
-          <a href="/" className="block bg-[#1B4332] text-white py-2 rounded-xl font-semibold">Accueil</a>
+          <Link href="/" className="block bg-[#1B4332] text-white py-2 rounded-xl font-semibold">
+            Accueil
+          </Link>
         </div>
       </main>
     )
@@ -27,46 +29,63 @@ export default async function ResultatsPage({
 
   if (!results) notFound()
 
-  const { score, correctes, total, rang } = results
+  const { score, correctes, incorrectes = 0, sautees = 0, total, rang } = results
   const pct = total ? Math.round((correctes / total) * 100) : 0
+
   const mention =
-    pct >= 80 ? 'Excellent !' :
-    pct >= 60 ? 'Bien joué !' :
-    pct >= 40 ? 'Encourageant' :
-    'Continue à apprendre'
+    pct >= 80
+      ? { ar: 'مَا شَاءَ اللَّه', fr: 'Excellent travail !' }
+      : pct >= 60
+      ? { ar: 'بَارَكَ اللَّهُ فِيكَ', fr: 'Bien joué !' }
+      : pct >= 40
+      ? { ar: 'إِنْ شَاءَ اللَّه', fr: 'Continue à progresser' }
+      : { ar: 'جَزَاكَ اللَّهُ خَيْرًا', fr: "Le savoir s'acquiert avec patience" }
 
   return (
     <main className="min-h-screen bg-[#F5F0E8] flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Header arabe */}
+        {/* Message arabe + mention */}
         <div className="text-center mb-8">
           <p
             className="font-amiri text-5xl text-[#1B4332] mb-2 leading-loose"
             dir="rtl"
             lang="ar"
+            aria-hidden="true"
           >
-            {pct >= 60 ? 'مَا شَاءَ اللَّه' : 'جَزَاكَ اللَّهُ خَيْرًا'}
+            {mention.ar}
           </p>
-          <p className="text-lg font-bold text-[#2C1810]">{mention}</p>
+          <p className="text-lg font-bold text-[#2C1810]">{mention.fr}</p>
         </div>
 
-        {/* Score */}
+        {/* Score principal */}
         <div className="bg-[#1B4332] rounded-2xl p-6 text-center text-white mb-6 shadow-xl">
           <p className="text-[#D4AF37] text-sm font-semibold mb-1">Score final</p>
-          <p className="text-6xl font-bold mb-1">{score}</p>
+          <p className="text-6xl font-bold mb-1" aria-label={`${score} points`}>
+            {score}
+          </p>
           <p className="text-white/70 text-sm">points</p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm">
-            <p className="text-3xl font-bold text-[#1B4332]">{correctes}/{total}</p>
-            <p className="text-xs text-[#8B7355] mt-1">Bonnes réponses</p>
+        {/* Stats : correctes / incorrectes / sautées */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="bg-white rounded-xl p-3 text-center border border-emerald-200 shadow-sm">
+            <p className="text-2xl font-bold text-emerald-600">{correctes}</p>
+            <p className="text-[10px] text-[#8B7355] mt-1 leading-tight">Correctes</p>
           </div>
-          <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm">
-            <p className="text-3xl font-bold text-[#D4AF37]">{pct}%</p>
-            <p className="text-xs text-[#8B7355] mt-1">Taux de réussite</p>
+          <div className="bg-white rounded-xl p-3 text-center border border-red-200 shadow-sm">
+            <p className="text-2xl font-bold text-red-500">{incorrectes}</p>
+            <p className="text-[10px] text-[#8B7355] mt-1 leading-tight">Incorrectes</p>
           </div>
+          <div className="bg-white rounded-xl p-3 text-center border border-slate-200 shadow-sm">
+            <p className="text-2xl font-bold text-slate-500">{sautees}</p>
+            <p className="text-[10px] text-[#8B7355] mt-1 leading-tight">Sautées</p>
+          </div>
+        </div>
+
+        {/* Taux de réussite */}
+        <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm mb-4">
+          <p className="text-3xl font-bold text-[#D4AF37]">{pct}%</p>
+          <p className="text-xs text-[#8B7355] mt-1">Taux de réussite — {correctes}/{total}</p>
         </div>
 
         {/* Classement */}
@@ -83,7 +102,7 @@ export default async function ResultatsPage({
         <div className="space-y-3">
           <Link
             href="/"
-            className="block w-full bg-[#1B4332] hover:bg-[#155128] text-white font-bold py-3 rounded-xl text-center transition-colors"
+            className="block w-full bg-[#1B4332] hover:bg-[#155128] text-white font-bold py-3 rounded-xl text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2"
           >
             Rejouer
           </Link>
