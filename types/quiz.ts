@@ -54,6 +54,7 @@ export interface EndGameResult {
   sautees: number
   total: number
   rang?: number
+  avgTime?: number
 }
 
 export interface QuizConfig {

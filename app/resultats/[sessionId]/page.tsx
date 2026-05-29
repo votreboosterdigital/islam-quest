@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getSessionResults } from '@/lib/quiz/queries'
+import RevisionButton from '@/components/RevisionButton'
 
 export default async function ResultatsPage({
   params,
@@ -29,7 +30,7 @@ export default async function ResultatsPage({
 
   if (!results) notFound()
 
-  const { score, correctes, incorrectes = 0, sautees = 0, total, rang } = results
+  const { score, correctes, incorrectes = 0, sautees = 0, total, rang, avgTime } = results
   const pct = total ? Math.round((correctes / total) * 100) : 0
 
   const mention =
@@ -44,7 +45,7 @@ export default async function ResultatsPage({
   return (
     <main className="min-h-screen bg-[#F5F0E8] flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Message arabe + mention */}
+        {/* Mention arabe */}
         <div className="text-center mb-8">
           <p
             className="font-amiri text-5xl text-[#1B4332] mb-2 leading-loose"
@@ -82,10 +83,26 @@ export default async function ResultatsPage({
           </div>
         </div>
 
-        {/* Taux de réussite */}
-        <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm mb-4">
-          <p className="text-3xl font-bold text-[#D4AF37]">{pct}%</p>
-          <p className="text-xs text-[#8B7355] mt-1">Taux de réussite — {correctes}/{total}</p>
+        {/* Taux de réussite + temps moyen */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm">
+            <p className="text-3xl font-bold text-[#D4AF37]">{pct}%</p>
+            <p className="text-xs text-[#8B7355] mt-1">Taux de réussite</p>
+            <p className="text-[10px] text-[#C4B49A]">{correctes}/{total}</p>
+          </div>
+          {avgTime !== undefined ? (
+            <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm">
+              <p className="text-3xl font-bold text-[#1B4332]">{avgTime}s</p>
+              <p className="text-xs text-[#8B7355] mt-1">Temps moyen</p>
+              <p className="text-[10px] text-[#C4B49A]">par question</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl p-4 text-center border border-[#E8DCC8] shadow-sm">
+              <p className="text-3xl font-bold text-[#1B4332]">—</p>
+              <p className="text-xs text-[#8B7355] mt-1">Temps moyen</p>
+              <p className="text-[10px] text-[#C4B49A]">mode libre</p>
+            </div>
+          )}
         </div>
 
         {/* Classement */}
@@ -100,6 +117,9 @@ export default async function ResultatsPage({
 
         {/* Actions */}
         <div className="space-y-3">
+          {incorrectes > 0 && (
+            <RevisionButton sessionId={sessionId} count={incorrectes} />
+          )}
           <Link
             href="/"
             className="block w-full bg-[#1B4332] hover:bg-[#155128] text-white font-bold py-3 rounded-xl text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2"

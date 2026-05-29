@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { submitAnswer, endGame } from '@/lib/quiz/actions'
 import { shuffleOptions } from '@/lib/quiz/shuffle'
@@ -71,7 +71,9 @@ export function useQuizGame({
   const [loading, setLoading] = useState(false)
   const [score, setScore] = useState(0)
 
-  // Shuffle calculé une seule fois par session (map stable via useState init)
+  const questionStartRef = useRef<number>(Date.now())
+  const questionTimesRef = useRef<number[]>([])
+
   const [shuffledOptionsMap] = useState<Map<string, OptionClient[]>>(() => {
     const map = new Map<string, OptionClient[]>()
     for (const q of questions) {
@@ -86,6 +88,8 @@ export function useQuizGame({
   const handleAnswer = useCallback(
     async (answerIndex: number) => {
       if (loading || phase !== 'question') return
+      const elapsed = Math.round((Date.now() - questionStartRef.current) / 1000)
+      questionTimesRef.current.push(Math.min(elapsed, 120))
       setSelectedIndex(answerIndex)
       setLoading(true)
       try {
@@ -94,7 +98,6 @@ export function useQuizGame({
         if (res.correct) setScore((s) => s + 10)
         setPhase('dalil')
       } catch {
-        // En cas d'erreur serveur : fallback minimal pour éviter la page blanche
         setResult(makeFallbackResult(currentQuestion))
         setPhase('dalil')
       } finally {
@@ -106,24 +109,30 @@ export function useQuizGame({
 
   const handleExpired = useCallback(() => {
     if (phase !== 'question' || loading) return
+    questionTimesRef.current.push(timerConfig.seconds)
     submitAnswer(sessionId, currentQuestion.id, -1)
       .then((res) => {
         setResult(res)
         setPhase('expired')
       })
       .catch(() => {
-        // Fallback pour éviter la page blanche si le serveur ne répond pas
         setResult(makeFallbackResult(currentQuestion))
         setPhase('expired')
       })
-  }, [phase, loading, sessionId, currentQuestion?.id])
+  }, [phase, loading, sessionId, currentQuestion?.id, timerConfig.seconds])
 
   const handleNext = useCallback(async () => {
     if (isLast) {
-      await endGame(sessionId)
+      const times = questionTimesRef.current
+      const avgTime =
+        times.length > 0
+          ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+          : undefined
+      await endGame(sessionId, avgTime)
       router.push(`/resultats/${sessionId}`)
       return
     }
+    questionStartRef.current = Date.now()
     setCurrentIndex((i) => i + 1)
     setPhase('question')
     setSelectedIndex(null)

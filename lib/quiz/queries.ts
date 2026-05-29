@@ -41,7 +41,7 @@ export async function getSessionResults(sessionId: string): Promise<EndGameResul
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('score, ended_at')
+    .select('score, ended_at, avg_time_per_question')
     .eq('id', sessionId)
     .single()
 
@@ -72,5 +72,7 @@ export async function getSessionResults(sessionId: string): Promise<EndGameResul
 
   const rang = totalSessions ? Math.round(((below ?? 0) / totalSessions) * 100) : undefined
 
-  return { score, correctes, incorrectes, sautees, total, rang }
+  const avgTime = session.avg_time_per_question ?? undefined
+
+  return { score, correctes, incorrectes, sautees, total, rang, avgTime }
 }

@@ -27,7 +27,6 @@ export async function startGame(
     throw new Error('Aucune question trouvée pour ce niveau/catégorie.')
   }
 
-  // Shuffle côté serveur (Fisher-Yates inline pour Server Action)
   const arr = [...allQuestions]
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -59,7 +58,66 @@ export async function startGame(
       texte: q.texte,
       niveau: q.niveau as StartGameResult['questions'][number]['niveau'],
       categorie: q.categorie as StartGameResult['questions'][number]['categorie'],
-      // Options triées par ordre original — le shuffle visuel est fait côté client
+      options: (q.options as { id: string; texte: string; ordre: number }[]).sort(
+        (a, b) => a.ordre - b.ordre,
+      ),
+    })),
+  }
+}
+
+export async function startRevisionGame(originalSessionId: string): Promise<StartGameResult> {
+  const supabase = createServiceClient()
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('pseudo, niveau, categorie')
+    .eq('id', originalSessionId)
+    .single()
+
+  if (!session) throw new Error('Session introuvable.')
+
+  const { data: wrongAnswers } = await supabase
+    .from('session_answers')
+    .select('question_id')
+    .eq('session_id', originalSessionId)
+    .eq('est_correct', false)
+    .not('reponse_index', 'is', null)
+
+  if (!wrongAnswers?.length) throw new Error('Aucune erreur à réviser.')
+
+  const wrongIds = wrongAnswers.map((a) => a.question_id as string)
+
+  const { data: questions, error: qError } = await supabase
+    .from('questions')
+    .select('id, texte, niveau, categorie, options(id, texte, ordre)')
+    .in('id', wrongIds)
+
+  if (qError || !questions?.length) throw new Error('Questions introuvables.')
+
+  const { data: newSession, error: sError } = await supabase
+    .from('sessions')
+    .insert({ pseudo: session.pseudo, niveau: session.niveau, categorie: session.categorie })
+    .select('id')
+    .single()
+
+  if (sError || !newSession) throw new Error('Erreur création session révision.')
+
+  const sessionAnswers = questions.map((q, i) => ({
+    session_id: newSession.id,
+    question_id: q.id,
+    ordre: i,
+  }))
+
+  const { error: saError } = await supabase.from('session_answers').insert(sessionAnswers)
+  if (saError) throw new Error('Erreur insertion questions révision.')
+
+  return {
+    sessionId: newSession.id,
+    questions: questions.map((q) => ({
+      id: q.id,
+      texte: q.texte,
+      niveau: q.niveau as StartGameResult['questions'][number]['niveau'],
+      categorie: q.categorie as StartGameResult['questions'][number]['categorie'],
       options: (q.options as { id: string; texte: string; ordre: number }[]).sort(
         (a, b) => a.ordre - b.ordre,
       ),
@@ -86,7 +144,6 @@ export async function submitAnswer(
   const correctOption = options.find((o) => o.est_correct)
   const isCorrect = !skipped && correctOption?.ordre === answerIndex
 
-  // Mise à jour session_answer (erreur silencieuse intentionnelle)
   await supabase
     .from('session_answers')
     .update({
@@ -97,9 +154,8 @@ export async function submitAnswer(
     .eq('session_id', sessionId)
     .eq('question_id', questionId)
 
-  // Incrément score si correct
   if (isCorrect) {
-    const { data: session } = await supabase
+    const { data: sessionData } = await supabase
       .from('sessions')
       .select('score')
       .eq('id', sessionId)
@@ -107,11 +163,10 @@ export async function submitAnswer(
 
     await supabase
       .from('sessions')
-      .update({ score: (session?.score ?? 0) + 10 })
+      .update({ score: (sessionData?.score ?? 0) + 10 })
       .eq('id', sessionId)
   }
 
-  // Récupération dalil + question en parallèle
   const [{ data: dalilData }, { data: questionData }] = await Promise.all([
     supabase
       .from('dalils')
@@ -127,7 +182,6 @@ export async function submitAnswer(
 
   if (!questionData) throw new Error('Question introuvable.')
 
-  // Dalil peut être absent — on fournit un fallback plutôt que de throw
   const dalil = dalilData
     ? {
         id: dalilData.id as string,
@@ -161,12 +215,15 @@ export async function submitAnswer(
   }
 }
 
-export async function endGame(sessionId: string): Promise<EndGameResult> {
+export async function endGame(sessionId: string, avgTime?: number): Promise<EndGameResult> {
   const supabase = createServiceClient()
+
+  const updateData: Record<string, unknown> = { ended_at: new Date().toISOString() }
+  if (avgTime !== undefined) updateData.avg_time_per_question = avgTime
 
   await supabase
     .from('sessions')
-    .update({ ended_at: new Date().toISOString() })
+    .update(updateData)
     .eq('id', sessionId)
 
   const [{ data: session }, { data: answers }] = await Promise.all([
@@ -198,5 +255,5 @@ export async function endGame(sessionId: string): Promise<EndGameResult> {
 
   const rang = totalSessions ? Math.round(((below ?? 0) / totalSessions) * 100) : undefined
 
-  return { score, correctes, incorrectes, sautees, total, rang }
+  return { score, correctes, incorrectes, sautees, total, rang, avgTime }
 }
