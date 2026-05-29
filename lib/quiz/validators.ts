@@ -47,7 +47,8 @@ export function analyzeDistribution(
 }
 
 // Dérive le type de source depuis la référence textuelle
-export function deriveSourceType(reference: string): SourceType {
+export function deriveSourceType(reference: string | null | undefined): SourceType {
+  if (!reference) return 'other'
   const ref = reference.toLowerCase()
   if (
     ref.includes('sourate') ||

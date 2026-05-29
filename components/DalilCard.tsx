@@ -77,12 +77,18 @@ export default function DalilCard({
         </div>
       )}
 
-      {/* Carte dalil */}
+      {/* Carte dalil — masquée si pas de contenu (fallback erreur réseau) */}
       <div className="bg-[#1B4332] rounded-2xl overflow-hidden shadow-xl">
         {/* Explication */}
-        <div className="bg-white/10 px-6 py-4">
-          <p className="text-white/90 text-sm leading-relaxed">{dalil.explication}</p>
-        </div>
+        {dalil.explication ? (
+          <div className="bg-white/10 px-6 py-4">
+            <p className="text-white/90 text-sm leading-relaxed">{dalil.explication}</p>
+          </div>
+        ) : (
+          <div className="bg-white/10 px-6 py-4">
+            <p className="text-white/50 text-sm text-center italic">Correction non disponible</p>
+          </div>
+        )}
 
         {/* Séparateur décoratif */}
         <div className="flex items-center gap-3 px-6 py-2" aria-hidden="true">

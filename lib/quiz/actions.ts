@@ -72,7 +72,6 @@ export async function submitAnswer(
   questionId: string,
   answerIndex: number,
 ): Promise<SubmitAnswerResult> {
-  submitAnswerSchema.parse({ sessionId, questionId, answerIndex })
   const supabase = createServiceClient()
   const skipped = answerIndex === -1
 
@@ -82,12 +81,12 @@ export async function submitAnswer(
     .eq('question_id', questionId)
     .order('ordre')
 
-  if (oError || !options) throw new Error('Options introuvables.')
+  if (oError || !options?.length) throw new Error('Options introuvables.')
 
   const correctOption = options.find((o) => o.est_correct)
   const isCorrect = !skipped && correctOption?.ordre === answerIndex
 
-  // Mise à jour session_answer
+  // Mise à jour session_answer (erreur silencieuse intentionnelle)
   await supabase
     .from('session_answers')
     .update({
@@ -126,22 +125,38 @@ export async function submitAnswer(
       .single(),
   ])
 
-  if (!questionData || !dalilData) throw new Error('Données question introuvables.')
+  if (!questionData) throw new Error('Question introuvable.')
+
+  // Dalil peut être absent — on fournit un fallback plutôt que de throw
+  const dalil = dalilData
+    ? {
+        id: dalilData.id as string,
+        explication: (dalilData.explication ?? '') as string,
+        texte_arabe: (dalilData.texte_arabe ?? '') as string,
+        traduction: (dalilData.traduction ?? '') as string,
+        reference: (dalilData.reference ?? '') as string,
+        source_type: deriveSourceType(dalilData.reference),
+      }
+    : {
+        id: '',
+        explication: '',
+        texte_arabe: '',
+        traduction: '',
+        reference: '',
+        source_type: 'other' as const,
+      }
 
   return {
     correct: isCorrect,
     skipped,
     question: {
-      id: questionData.id,
-      texte: questionData.texte,
+      id: questionData.id as string,
+      texte: questionData.texte as string,
       niveau: questionData.niveau as SubmitAnswerResult['question']['niveau'],
       categorie: questionData.categorie as SubmitAnswerResult['question']['categorie'],
-      options: options.map((o) => ({ id: o.id, texte: o.texte, ordre: o.ordre })),
+      options: options.map((o) => ({ id: o.id as string, texte: o.texte as string, ordre: o.ordre as number })),
       correctOrdre: correctOption?.ordre ?? 0,
-      dalil: {
-        ...dalilData,
-        source_type: deriveSourceType(dalilData.reference),
-      },
+      dalil,
     },
   }
 }

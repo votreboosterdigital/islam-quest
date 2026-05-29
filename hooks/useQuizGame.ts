@@ -10,6 +10,29 @@ import type {
   TimerConfig,
 } from '@/types/quiz'
 
+function makeFallbackResult(question: QuestionClient): SubmitAnswerResult {
+  return {
+    correct: false,
+    skipped: true,
+    question: {
+      id: question.id,
+      texte: question.texte,
+      niveau: question.niveau,
+      categorie: question.categorie,
+      options: question.options,
+      correctOrdre: 0,
+      dalil: {
+        id: '',
+        explication: '',
+        texte_arabe: '',
+        traduction: '',
+        reference: '',
+        source_type: 'other' as const,
+      },
+    },
+  }
+}
+
 interface UseQuizGameProps {
   sessionId: string
   questions: QuestionClient[]
@@ -71,7 +94,8 @@ export function useQuizGame({
         if (res.correct) setScore((s) => s + 10)
         setPhase('dalil')
       } catch {
-        // Continuer même si le réseau échoue
+        // En cas d'erreur serveur : fallback minimal pour éviter la page blanche
+        setResult(makeFallbackResult(currentQuestion))
         setPhase('dalil')
       } finally {
         setLoading(false)
@@ -82,13 +106,14 @@ export function useQuizGame({
 
   const handleExpired = useCallback(() => {
     if (phase !== 'question' || loading) return
-    // Soumettre comme sauté (-1) sans bloquer l'UI
     submitAnswer(sessionId, currentQuestion.id, -1)
       .then((res) => {
         setResult(res)
         setPhase('expired')
       })
       .catch(() => {
+        // Fallback pour éviter la page blanche si le serveur ne répond pas
+        setResult(makeFallbackResult(currentQuestion))
         setPhase('expired')
       })
   }, [phase, loading, sessionId, currentQuestion?.id])
